@@ -1,0 +1,122 @@
+---
+title: "Kaggle"
+author: "Abhirupa Lodh"
+date: "13 September 2017"
+output: html_document
+---
+
+```{r}
+train=read.csv("C:/Users/Administrator/Desktop/Kaggle/Titanic/train (1).csv")
+```
+
+```{r}
+train_refined=train[,-c(11,12)]
+colnames(train_refined)
+
+```
+
+```{r}
+age_mean=mean(train_refined$Age,na.rm=TRUE)
+train_refined$Age[is.na(train_refined$Age)]=age_mean
+summary(train_refined)
+
+```
+
+```{r}
+library(randomForest)
+colnames(train_refined)
+train_refined=train_refined[,c(1,2,3,5,6,7,8,10)]
+
+```
+
+
+```{r}
+nrow(train)
+train_data=train_refined[1:625,]
+test_data=train_refined[626:891,]
+target=test_data[,2]
+as.factor(target)->target
+test_data=test_data[,-c(2)]
+test_data
+
+```
+```{r}
+class(train_data$Survived)
+as.factor(train_data$Survived)->train_data$Survived
+```
+
+```{r}
+class(train_data$Survived)
+```
+
+```{r}
+model_randomForest=randomForest(Survived ~ PassengerId + Pclass + Sex + Age +  SibSp + Parch + Fare, data = train_data)
+model_randomForest
+print(importance(fit,type = 2)) 
+```
+
+
+
+```{r}
+pred = predict(model_randomForest,test_data)
+```
+
+
+```{r}
+pred
+```
+
+```{r}
+data.frame(target,pred)->accuracy_tab
+```
+
+```{r}
+accuracy_tab$target==accuracy_tab$pred->accuracy_vec
+count=0
+for(i in 1:nrow(accuracy_tab))
+{
+  if(accuracy_vec[i]==FALSE)
+{
+  count=count+1
+}
+  }
+
+Error = (count/nrow(accuracy_tab))*100
+Accuracy = 100 -Error
+paste("Accuracy : ",Accuracy)
+```
+
+```{r}
+
+test <- read.csv("C:/Users/Administrator/Desktop/Kaggle/Titanic/test (1).csv")
+
+```
+
+```{r}
+colnames(test)
+summary(test)
+#Fare has one NA . Hence omitting it
+test=test[!is.na(test$Fare),]
+```
+
+```{r}
+test=test[,-c(3,8,10,11)]
+colnames(test)
+```
+
+```{r}
+test_age_mean=mean(test$Age,na.rm=TRUE)
+test$Age[is.na(test$Age)]=test_age_mean
+summary(test)
+```
+
+```{r}
+Survived = predict(model_randomForest,test)
+test$PassengerId->PassengerId
+data.frame(PassengerId,Survived) -> Predicted_Results
+```
+
+```{r}
+write.csv(Predicted_Results,"C:/Users/Administrator/Desktop/Kaggle/Titanic/survival_prediction.csv",row.names = F)
+```
+
