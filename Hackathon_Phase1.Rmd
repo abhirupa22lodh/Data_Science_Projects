@@ -1,0 +1,239 @@
+---
+title: "Hackathon_Phase1"
+author: "Abhirupa Lodh"
+date: "10 November 2017"
+output: html_document
+---
+
+```{r}
+library(tree)
+library(e1071)
+library(class)
+library(randomForest)
+library(corrplot)
+```
+
+
+```{r}
+setwd("C:/Users/Administrator/Desktop/Machine Learning/Hackathon/Phase 1")
+```
+
+```{r}
+getwd()
+```
+
+
+```{r}
+sample_data <- read.csv("C:/Users/Administrator/Desktop/Machine Learning/Hackathon/Phase 1/Model_Data.csv")
+summary(sample_data)
+```
+
+```{r}
+r=nrow(sample_data)
+c=ncol(sample_data)
+r
+c
+```
+
+```{r}
+str(sample_data)
+```
+
+#Data Imputation 
+
+```{r}
+#code  for finding mode 
+
+Mode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+```
+
+#workclass , occupation and native.country has empty values as " ?"
+
+Step 1: Convert then to character and impute
+step 2: Convert them again to factors
+
+```{r}
+as.character(sample_data$workclass)->sample_data$workclass
+as.character(sample_data$occupation)->sample_data$occupation
+as.character(sample_data$native.country)->sample_data$native.country
+```
+
+```{r}
+sample_data$workclass[sample_data$workclass==" ?"]=Mode(sample_data$workclass)
+sample_data$occupation[sample_data$occupation==" ?"]=Mode(sample_data$occupation)
+sample_data$native.country[sample_data$native.country==" ?"]=Mode(sample_data$native.country)
+```
+
+```{r}
+as.factor(sample_data$workclass)->sample_data$workclass
+as.factor(sample_data$occupation)->sample_data$occupation
+as.factor(sample_data$native.country)->sample_data$native.country
+```
+
+```{r}
+str(sample_data)
+```
+
+#native.country has 41 lavels. Convert it to numeric
+
+```{r}
+as.numeric(sample_data$native.country)->sample_data$native.country
+```
+
+```{r}
+levels(sample_data$compensation)
+
+as.character(sample_data$compensation)->sample_data$compensation
+
+
+```
+
+```{r}
+sample_data$compensation[sample_data$compensation==" >50K."]=" >50K"
+sample_data$compensation[sample_data$compensation==" <=50K."]=" <=50K"
+```
+
+```{r}
+as.factor(sample_data$compensation)->sample_data$compensation
+```
+
+
+Looking for variable correlation 
+
+```{r}
+corr_data=sample_data[,c('age','fnlwgt','education.num','capital.gain','hours.per.week')]
+
+```
+
+```{r}
+cor(corr_data)
+```
+
+```{r}
+
+corrplot(cor(corr_data),method = "color",order = "hclust")
+```
+
+#All the attributes seems to be independent of  each other
+
+```{r}
+set.seed(0040)
+index=sample(c(1:r),size = 0.8*r,replace = F)
+train=sample_data[index,]
+test=sample_data[-index,]
+```
+
+#Model1 : Decision Tree
+
+#sex+native.country+race+capital.loss+capital.gain -> 81.28906
+#sex+native.country+race+capital.loss+capital.gain,fnlwgt -> 81.28906
+#sex+native.country+capital.loss+capital.gain -> 81.28906
+#sex+native.country+capital.loss+capital.gain,fnlwgt -> 81.28906
+#compensation~education+relationship+capital.gain -> 84.83073
+#compensation~education+relationship+capital.gain+sex -> 84.83073
+#compensation~. -> 84.83073
+#compensation~hours.per.week+capital.gain -> 80.02604
+#compensation~hours.per.week+education+relationship -> 82.23958
+#compensation~hours.per.week+education -> 78
+#compensation~hours.per.week+relationship -> 77.34375
+#compensation~hours.per.week+capital.gain-> 80.02604
+#compensation~hours.per.week+capital.loss+capital.gain->81.41927
+
+```{r}
+model1=tree(compensation~.,data=train)
+```
+
+```{r}
+pred=predict(model1,test)
+```
+
+
+```{r}
+maxidx=function(arr){
+  return(which(arr==max(arr)))
+}
+idx=apply(pred,c(1),maxidx)
+modelpred=c(" <=50K"," >50K")[idx]
+confmat=table(modelpred,test$compensation)
+
+#modelpred
+confmat
+```
+
+```{r}
+accuracy=sum(diag(confmat))/nrow(test)
+
+paste("Accuracy Decision Tree : ",accuracy*100)
+```
+
+#Model2 : Naive Bayes
+
+```{r}
+model2=naiveBayes(compensation~.,data=train)
+```
+
+```{r}
+pred=predict(model2,test)
+```
+
+```{r}
+table(test$compensation,pred)->acc_mat
+acc_mat
+```
+
+```{r}
+accuracy=sum(diag(acc_mat))/nrow(test)
+paste("Accuracy Naive Bayes : ",accuracy*100)
+```
+
+#kNN 
+
+```{r}
+sample_data->sample_data_k
+str(sample_data_k)
+sample_data_k$workclass=as.numeric(sample_data_k$workclass)
+sample_data_k$education=as.numeric(sample_data_k$education)
+sample_data_k$marital.status=as.numeric(sample_data_k$marital.status)
+sample_data_k$occupation=as.numeric(sample_data_k$occupation)
+sample_data_k$relationship=as.numeric(sample_data_k$relationship)
+sample_data_k$race=as.numeric(sample_data_k$race)
+sample_data_k$sex=as.numeric(sample_data_k$sex)
+sample_data_k$native.country=as.numeric(sample_data_k$native.country)
+
+```
+
+```{r}
+set.seed(0040)
+index=sample(c(1:r),size = 0.8*r,replace = F)
+train=sample_data_k[index,]
+test=sample_data_k[-index,]
+```
+
+```{r}
+train_features=train[,-c(c)]
+train_label=train[,c(c)]
+test_features=test[,c(-c)]
+test_label=test[,c(c)]
+
+k=3
+```
+
+```{r}
+model3=knn(train = train_features,test = test_features,cl=train_label,k=5)
+```
+
+```{r}
+confmat=table(model3,test_label)
+confmat
+```
+
+```{r}
+Accuracy=sum(diag(confmat))/sum(confmat)
+#Accuracy = (count/length(pc_pred_label))*100
+paste("Accuracy of kNN : ",Accuracy*100)
+```
+
+
