@@ -1,0 +1,227 @@
+---
+title: "Hackathon Phase-2 Abhirupa Lodh"
+output: html_document  
+---
+
+```{r library}
+library(corrplot)
+library(Boruta)
+library(mice)
+library(randomForest)
+
+
+```
+
+```{r}
+train <- read.csv("C:/Users/SAROJ/Desktop/Hackathon/train.csv")
+```
+
+
+```{r}
+colnames(train)
+```
+
+```{r}
+train1 = train[,-c(25:36)]
+```
+
+```{r}
+#train1 = train1[,-c(5)]
+```
+
+```{r}
+#train1=train1[,-c(18,21)]
+```
+
+```{r}
+summary(train1)
+```
+
+
+
+```{r}
+as.factor(train1$ï..year)->train1$ï..year
+as.factor(train1$occattend)->train1$occattend
+as.factor(train1$unem10)->train1$unem10
+as.factor(train1$regattend)->train1$regattend
+as.factor(train1$blackfemale)->train1$blackfemale
+as.factor(train1$black)->train1$black
+as.factor(train1$female)->train1$female
+as.factor(train1$vhappy)->train1$vhappy
+as.factor(train1$mothfath16)->train1$mothfath16
+```
+
+```{r}
+str(train1)
+```
+
+###Data imputation
+
+```{r}
+names(train1)[sapply(train1, is.factor)]->f
+```
+
+```{r}
+names(train1)[sapply(train1, is.numeric)]->n
+```
+
+```{r}
+numeric_data = train1[,n]
+factor_data = train1[,f]
+```
+
+```{r}
+mice(data = numeric_data, m = 5, method = "pmm", maxit = 5, seed = 500)->imputed_n
+
+```
+
+```{r}
+numeric_imp = complete(imputed_n,2)
+```
+
+```{r}
+summary(numeric_imp)
+```
+
+
+```{r}
+summary(factor_data)
+```
+
+```{r}
+mice(data = factor_data, m = 2, method = "polyreg", maxit = 2, seed = 500)->imputed_f
+
+```
+
+```{r}
+factor_imp=complete(imputed_f,2)
+```
+
+```{r}
+data.frame(numeric_imp,factor_imp)->train3
+```
+
+###Finding Variable importance
+
+```{r}
+set.seed(123)
+boruta.train <- Boruta(happy~., data = train3, doTrace = 2,maxRuns=20)
+print(boruta.train)
+```
+ 
+```{r}
+train3=train3[,-c(11,23)]
+```
+
+```{r}
+boruta.train$finalDecision
+```
+
+```{r}
+colnames(train3)
+```
+
+```{r}
+set.seed(100)
+index=sample(1:nrow(train3),0.7*nrow(train3))
+```
+
+```{r}
+test4 = train3[-index,]
+train4 = train3[index,]
+```
+
+```{r}
+fit = randomForest(happy~.,data = train4)
+```
+
+```{r}
+pred = predict(fit,test4)
+```
+
+```{r}
+table(pred,test4$happy)->conf
+```
+
+```{r}
+acc = sum(diag(conf))/nrow(test4)
+```
+
+###Accuracy
+
+```{r}
+acc
+```
+
+```{r}
+fit_or = randomForest(happy~.,data = train3)
+```
+
+```{r}
+test <- read.csv("C:/Users/SAROJ/Desktop/Hackathon/test.csv")
+```
+
+```{r}
+test1 = test[,-c(25:36)]
+
+```
+
+```{r}
+colnames(test1)
+```
+
+```{r}
+test1=test1[,-c(4,23)]
+```
+
+```{r}
+as.factor(test1$ï..year)->test1$ï..year
+as.factor(test1$unem10)->test1$unem10
+as.factor(test1$regattend)->test1$regattend
+as.factor(test1$blackfemale)->test1$blackfemale
+as.factor(test1$black)->test1$black
+as.factor(test1$female)->test1$female
+as.factor(test1$vhappy)->test1$vhappy
+as.factor(test1$mothfath16)->test1$mothfath16
+```
+
+```{r}
+str(test1)
+test1$gwbush00 = as.integer(test1$gwbush00)
+test1$gwbush04 = as.integer(test1$gwbush04)
+```
+
+```{r}
+str(train4)
+```
+```{r}
+summary(train4)
+```
+```{r}
+test_n = names(test1)[sapply(test1,is.numeric)]
+test_f= names(test1)[sapply(test1,is.factor)]
+```
+
+```{r}
+test_fd = test1[,test_f]
+test_nd = test1[,test_n]
+```
+
+```{r}
+  mice(data = test_fd, m = 2, method = "polyreg", maxit = 2, seed = 500)->imputed_f
+
+mice(data = test_nd, m = 2, method = "pmm", maxit = 2, seed = 500)->imputed_n
+```
+
+```{r}
+data.frame(complete(imputed_n,2),complete(imputed_f,2))->test2
+```
+
+```{r}
+pred = predict(fit_or,test2)
+```
+
+```{r}
+write.csv(pred,"C:/Users/SAROJ/Desktop/Hackathon/pred.csv")
+```
+
